@@ -20,8 +20,7 @@ def send_file():
     
     try:
         client.connect((SERVER_IP, SERVER_PORT))
-        
-        # Envia: SEND | NOME | TAMANHO
+      
         client.send(f"SEND|{name_only}|{filesize}".encode())
 
         response = client.recv(1024).decode()
@@ -32,11 +31,11 @@ def send_file():
             print("O arquivo está disponível para múltiplos downloads.")
             print("Pressione Ctrl+C para encerrar o compartilhamento.\n")
             
-            # === LOOP DE SEMEADURA (SEEDING) ===
+         
             while True:
                 print("Aguardando solicitações de download...")
                 
-                # Fica esperando o servidor dizer "UPLOAD_NOW"
+            
                 msg = client.recv(1024).decode()
                 
                 if msg == "UPLOAD_NOW":
@@ -50,7 +49,7 @@ def send_file():
                             total_sent += len(data)
                     print(f"--> Envio concluído! Voltando a aguardar.\n")
                 
-                elif msg == "": # Se receber vazio, servidor caiu
+                elif msg == "": 
                     print("Servidor desconectado.")
                     break
         else:
@@ -71,7 +70,7 @@ def receive_file():
         client.connect((SERVER_IP, SERVER_PORT))
         client.send(f"RECV|{code}".encode())
 
-        # Espera metadados: FILENM | NOME | TAMANHO
+     
         server_msg = client.recv(1024).decode()
         
         if server_msg.startswith("FILENM|"):
@@ -84,7 +83,6 @@ def receive_file():
             received_total = 0
             with open(output_name, 'wb') as f:
                 while received_total < filesize:
-                    # Calcula quanto falta para não ler bytes extras de outra msg
                     to_read = min(4096, filesize - received_total)
                     data = client.recv(to_read)
                     if not data: break
