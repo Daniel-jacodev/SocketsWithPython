@@ -101,11 +101,11 @@ def receive_file():
 
 def main():
     print("=== MULTI-USER P2P ===")
-    print("1. Compartilhar Arquivo (Fica online)")
+    print("1. Compartilhar Arquivo")
     print("2. Baixar Arquivo")
     choice = input("Opção: ")
     if choice == '1': send_file()
     elif choice == '2': receive_file()
 
-if __name__ == "__main__":
-    main()
+
+main()

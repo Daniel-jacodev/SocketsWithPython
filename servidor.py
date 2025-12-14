@@ -4,7 +4,7 @@ import threading
 import random
 import string
 
-
+#Limitação de tamanho por arquivo
 MAX_FILE_SIZE = 500 * 1024 * 1024 
 BLOCK_SIZE = 4096
 
@@ -14,7 +14,7 @@ def handle_client(client_socket, address):
     print(f"Nova conexão de {address}")
     
     try:
-        request = client_socket.recv(1024).decode().split('|')
+        request = client_socket.recv(1024).decode().split('|') #recebo a mensagem contendo, tamanho e nome
         
         if len(request) < 2: return
         command = request[0]
@@ -50,6 +50,7 @@ def handle_client(client_socket, address):
             code = request[1]
             
             if code in transfers:
+                #busca no banco de tranfers, o meio que cofre do meu servidor
                 sender_data = transfers[code]
                 sender_socket = sender_data['socket']
                 filename = sender_data['filename']
@@ -58,27 +59,27 @@ def handle_client(client_socket, address):
                 print(f"Cliente {address} solicitou arquivo {code}")
 
              
-                client_socket.send(f"FILENM|{filename}|{filesize}".encode())
+                client_socket.send(f"FILENM|{filename}|{filesize}".encode()) #sincronia com o cliente que está recebendo
 
              
                 try:
-                    sender_socket.send("UPLOAD_NOW".encode())
+                    sender_socket.send("UPLOAD_NOW".encode()) #avisa ao send para começar a enviar e encerra a parte de "conversa"
                 except:
                     client_socket.send("ERROR:Enviador desconectou".encode())
-                    del transfers[code]
+                    del transfers[code] 
                     return
 
               
-                remaining = filesize
+                remaining = filesize #conferir para não faltar nenhum byte, ou a conexão não se manter aberta depois que acabar o arquivo
                 while remaining > 0:
                   
-                    read_size = min(BLOCK_SIZE, remaining)
+                    read_size = min(BLOCK_SIZE, remaining)  #guarda em read_sive o tamanho do proximo pacote que será enviado
                     
-                    data = sender_socket.recv(read_size)
+                    data = sender_socket.recv(read_size) #guarda em data o próximo pacote
                     if not data: break 
                     
-                    client_socket.send(data)
-                    remaining -= len(data)
+                    client_socket.send(data) #transferencia de arquivos acontecendo
+                    remaining -= len(data) #diminui para contagem
                 
                 print(f"Transferência concluída para {address}. Enviador continua online.")
                 client_socket.close() 
@@ -94,7 +95,7 @@ def handle_client(client_socket, address):
 
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+  #  server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(('0.0.0.0', 8080))
     server.listen(10) # Aceita até 10 conexões pendentes
     print(f"Servidor Multi-Client rodando na porta 8080...")
@@ -104,5 +105,5 @@ def start_server():
         client_sock, addr = server.accept()
         threading.Thread(target=handle_client, args=(client_sock, addr)).start()
 
-if __name__ == "__main__":
-    start_server()
+
+start_server()
