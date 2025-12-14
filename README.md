@@ -24,8 +24,8 @@ O sistema suporta **Multi-Threading** e **Sessões Persistentes** (Seeding), per
 
 1. Clone o repositório:
    ```bash
-   git clone [https://github.com/seu-usuario/seu-repositorio.git](https://github.com/seu-usuario/seu-repositorio.git)
-   cd seu-repositorio
+   git clone [https://github.com/Daniel-jacodev/SocketsWithPython.git](https://github.com/Daniel-jacodev/SocketsWithPython.git)
+   cd SocketsWithPython
    ```
 2. Certifique-se de ter os arquivos principais na pasta:
 
