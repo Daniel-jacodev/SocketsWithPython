@@ -1,6 +1,7 @@
 import socket
 import os
 import time
+import pathlib
 
 SERVER_IP = 'localhost'
 SERVER_PORT = 8080
@@ -28,32 +29,58 @@ def limpar_caminho(caminho_bruto):
     # 5. Normaliza as barras (Converte / para \ no Windows automaticamente)
     return os.path.normpath(caminho)
 
+import pathlib # Adicione isso lá em cima nos imports
+
 def send_file():
-    print("\n--- MODO ENVIAR ---")
-    raw_filename = input("Digite o caminho do arquivo: ")
+    print("\n--- MODO ENVIAR (Windows Safe) ---")
+    raw_input = input("Arraste o arquivo aqui: ")
     
-    # CHAMA A FUNÇÃO DE LIMPEZA AQUI
-    filename = limpar_caminho(raw_filename)
+    # 1. Limpeza em camadas
+    path_str = raw_input.strip()
     
-    print(f"DEBUG: Tentando abrir -> [{filename}]")
+    # Remove artefatos do PowerShell
+    if path_str.startswith("&"):
+        path_str = path_str[1:].strip()
+        
+    # Remove aspas repetidamente (caso tenha '"caminho"')
+    path_str = path_str.replace('"', '').replace("'", "").strip()
+    
+    # 2. Converte para objeto Path (Resolve barras invertidas automaticamente)
+    path_obj = pathlib.Path(path_str)
+    
+    # 3. Resolve caminho absoluto (Transforma caminhos relativos em C:\...)
+    try:
+        full_path = path_obj.resolve()
+        filename = str(full_path)
+    except Exception as e:
+        filename = path_str # Se der erro, usa o original
+
+    print(f"DEBUG: Tentando ler: [{filename}]")
 
     if not os.path.exists(filename):
-        print("❌ Erro: Arquivo não existe.")
-        print("Dica: Tente digitar o caminho manualmente se arrastar não funcionar.")
+        print("❌ Erro: O Windows não achou o arquivo.")
+        # Tenta listar o diretório para ver se é problema de permissão ou nome
+        try:
+            pasta_pai = os.path.dirname(filename)
+            if os.path.exists(pasta_pai):
+                print(f"✅ A pasta '{pasta_pai}' existe.")
+                print("Arquivos próximos:", os.listdir(pasta_pai)[:3]) # Mostra os 3 primeiros arquivos
+            else:
+                print(f"❌ A pasta '{pasta_pai}' também não foi encontrada.")
+        except:
+            pass
         return
 
-    # Resto do código segue igual...
+    # Se passou daqui, é sucesso. Continua o código normal...
     filesize = os.path.getsize(filename)
     name_only = os.path.basename(filename)
-
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # ... (Copie o resto da conexão do código anterior aqui) ...
     try:
         client.connect((SERVER_IP, SERVER_PORT))
-        
-        # Envia: SEND | NOME | TAMANHO
         client.send(f"SEND|{name_only}|{filesize}".encode())
-
+        # ... resto igual ...
         response = client.recv(1024).decode()
         
         if response.startswith("CODE:"):
