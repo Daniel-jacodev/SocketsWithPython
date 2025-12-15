@@ -1,109 +1,80 @@
-
 import socket
 import threading
 import random
 import string
 
-#Limitação de tamanho por arquivo
-MAX_FILE_SIZE = 500 * 1024 * 1024 
-BLOCK_SIZE = 4096
-
+# Dicionário para guardar as transferências pendentes
+# Formato: { 'CODIGO': socket_do_enviador }
 transfers = {}
 
 def handle_client(client_socket, address):
     print(f"Nova conexão de {address}")
     
     try:
-        request = client_socket.recv(1024).decode().split('|') #recebo a mensagem contendo, tamanho e nome
-        
-        if len(request) < 2: return
+        # O cliente envia primeiro a intenção: SEND ou RECV
+        # Exemplo de mensagem: "SEND|nome_arquivo.txt" ou "RECV|1234"
+        request = client_socket.recv(1024).decode().split('|')
         command = request[0]
 
-        
         if command == 'SEND':
             filename = request[1]
-            filesize = int(request[2]) 
-            
-           
-            if filesize > MAX_FILE_SIZE:
-                client_socket.send("ERROR:Arquivo muito grande".encode())
-                client_socket.close()
-                return
-
+            # Gera um código curto de 4 dígitos
             code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
             
-            transfers[code] = {
-                'socket': client_socket,
-                'filename': filename,
-                'filesize': filesize
-            }
+            # Guarda o socket do enviador no dicionário
+            transfers[code] = client_socket
             
+            # Avisa o código ao enviador
             client_socket.send(f"CODE:{code}".encode())
-            print(f"Sessão criada! Código: {code} | Arq: {filename} ({filesize} bytes)")
-            print(f"Enviador {address} está aguardando downloads...")
+            print(f"Usuário {address} esperando receptor com código {code}")
             
-        
+            # Nota: A thread termina aqui? Não, mantemos o socket aberto no dicionário
+            # O socket será usado quando o Receptor chegar.
             return 
 
-     
         elif command == 'RECV':
             code = request[1]
             
             if code in transfers:
-                #busca no banco de tranfers, o meio que cofre do meu servidor
-                sender_data = transfers[code]
-                sender_socket = sender_data['socket']
-                filename = sender_data['filename']
-                filesize = sender_data['filesize']
+                sender_socket = transfers[code]
+                print(f"Conectando receptor {address} ao enviador do código {code}")
                 
-                print(f"Cliente {address} solicitou arquivo {code}")
-
-             
-                client_socket.send(f"FILENM|{filename}|{filesize}".encode()) #sincronia com o cliente que está recebendo
-
-             
-                try:
-                    sender_socket.send("UPLOAD_NOW".encode()) #avisa ao send para começar a enviar e encerra a parte de "conversa"
-                except:
-                    client_socket.send("ERROR:Enviador desconectou".encode())
-                    del transfers[code] 
-                    return
-
-              
-                remaining = filesize #conferir para não faltar nenhum byte, ou a conexão não se manter aberta depois que acabar o arquivo
-                while remaining > 0:
-                  
-                    read_size = min(BLOCK_SIZE, remaining)  #guarda em read_sive o tamanho do proximo pacote que será enviado
-                    
-                    data = sender_socket.recv(read_size) #guarda em data o próximo pacote
-                    if not data: break 
-                    
-                    client_socket.send(data) #transferencia de arquivos acontecendo
-                    remaining -= len(data) #diminui para contagem
+                # Avisa ao enviador para começar a mandar
+                sender_socket.send("START".encode())
                 
-                print(f"Transferência concluída para {address}. Enviador continua online.")
-                client_socket.close() 
-             
+                # LOOP DE TRANSFERÊNCIA (A PONTE)
+                # O servidor lê do Sender e escreve no Receiver
+                while True:
+                    data = sender_socket.recv(4096)
+                    if not data:
+                        break
+                    client_socket.send(data)
                 
+                # Limpeza
+                sender_socket.close()
+                client_socket.close()
+                del transfers[code]
+                print(f"Transferência {code} concluída.")
             else:
-                client_socket.send("ERROR:Código inválido ou expirado".encode())
+                client_socket.send("ERROR:Código não encontrado".encode())
                 client_socket.close()
 
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"Erro na conexão: {e}")
         client_socket.close()
 
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  #  server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # 0.0.0.0 permite conexões de qualquer IP (local ou externo se tiver port forwarding)
     server.bind(('0.0.0.0', 8080))
-    server.listen(10) # Aceita até 10 conexões pendentes
-    print(f"Servidor Multi-Client rodando na porta 8080...")
-    print(f"Limite de arquivo: {MAX_FILE_SIZE/1024/1024} MB")
+    server.listen(5)
+    print("Servidor P2P Relay rodando na porta 8080...")
 
     while True:
         client_sock, addr = server.accept()
-        threading.Thread(target=handle_client, args=(client_sock, addr)).start()
+        # Cria uma nova thread para cada conexão
+        thread = threading.Thread(target=handle_client, args=(client_sock, addr))
+        thread.start()
 
-
-start_server()
+if __name__ == "__main__":
+    start_server()
