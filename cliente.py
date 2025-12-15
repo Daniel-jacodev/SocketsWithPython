@@ -1,85 +1,112 @@
 import socket
 import os
+import time
 
-# Se for rodar localmente use 'localhost'. 
-# Se for pela internet, coloque o IP Público do servidor.
-SERVER_IP = 'localhost' 
+SERVER_IP = 'localhost'
 SERVER_PORT = 8080
 
 def send_file():
-    # Recebe o caminho bruto
-    raw_filename = input("Digite o caminho do arquivo para enviar: ")
+    raw_filename = input("Digite o caminho do arquivo: ").strip().replace("'", "").replace('"', "")
     
-    # 1. .strip() remove espaços vazios no começo e fim
-    # 2. .replace() remove aspas simples (') e duplas (") que o terminal adiciona
-    filename = raw_filename.strip().replace("'", "").replace('"', "")
-    
-    # Dica: Vamos imprimir para ver como ficou o caminho limpo
-    print(f"Procurando por: {filename}") 
-
-    if not os.path.exists(filename):
-        print("Erro: Arquivo não encontrado. Verifique o caminho.")
+    if not os.path.exists(raw_filename):
+        print("Erro: Arquivo não existe.")
         return
 
+    filesize = os.path.getsize(raw_filename)
+    name_only = os.path.basename(raw_filename)
+
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((SERVER_IP, SERVER_PORT))
-
-    # Envia cabeçalho: SEND|nome_do_arquivo
-    name_only = os.path.basename(filename)
-    client.send(f"SEND|{name_only}".encode())
-
-    # Recebe o código do servidor
-    response = client.recv(1024).decode()
-    if response.startswith("CODE:"):
-        code = response.split(":")[1]
-        print(f"\n--- CÓDIGO DE TRANSFERÊNCIA: {code} ---")
-        print("Aguardando receptor conectar...")
+    
+    try:
+        client.connect((SERVER_IP, SERVER_PORT))
         
-        # Espera o servidor dizer "START"
-        msg = client.recv(1024).decode()
-        if msg == "START":
-            print("Receptor conectado! Enviando arquivo...")
-            with open(filename, 'rb') as f:
-                while True:
-                    data = f.read(4096)
-                    if not data:
-                        break
-                    client.send(data)
-            print("Arquivo enviado com sucesso!")
-            client.close()
+        # Envia: SEND | NOME | TAMANHO
+        client.send(f"SEND|{name_only}|{filesize}".encode())
+
+        response = client.recv(1024).decode()
+        
+        if response.startswith("CODE:"):
+            code = response.split(":")[1]
+            print(f"\n--- CÓDIGO ATIVO: {code} ---")
+            print("O arquivo está disponível para múltiplos downloads.")
+            print("Pressione Ctrl+C para encerrar o compartilhamento.\n")
+            
+            # === LOOP DE SEMEADURA (SEEDING) ===
+            while True:
+                print("Aguardando solicitações de download...")
+                
+                # Fica esperando o servidor dizer "UPLOAD_NOW"
+                msg = client.recv(1024).decode()
+                
+                if msg == "UPLOAD_NOW":
+                    print(f"--> Iniciando envio para um cliente...")
+                    with open(raw_filename, 'rb') as f:
+                        total_sent = 0
+                        while total_sent < filesize:
+                            data = f.read(4096)
+                            if not data: break
+                            client.send(data)
+                            total_sent += len(data)
+                    print(f"--> Envio concluído! Voltando a aguardar.\n")
+                
+                elif msg == "": # Se receber vazio, servidor caiu
+                    print("Servidor desconectado.")
+                    break
+        else:
+            print(f"Erro do servidor: {response}")
+
+    except KeyboardInterrupt:
+        print("\nEncerrando compartilhamento...")
+    except Exception as e:
+        print(f"Erro: {e}")
+    finally:
+        client.close()
+
 def receive_file():
-    code = input("Digite o código de transferência: ")
-    
+    code = input("Digite o código: ")
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((SERVER_IP, SERVER_PORT))
-
-    # Envia intenção: RECV|codigo
-    client.send(f"RECV|{code}".encode())
-
-    # Começa a receber os dados
-    # (Num sistema real, deveríamos receber o nome do arquivo primeiro, 
-    # mas vamos simplificar salvando como 'recebido_output')
-    print("Baixando arquivo...")
     
-    with open(f"recebido_{code}.dat", 'wb') as f:
-        while True:
-            data = client.recv(4096)
-            if not data:
-                break
-            f.write(data)
-    
-    print(f"Arquivo recebido e salvo como 'recebido_{code}.dat'!")
-    client.close()
+    try:
+        client.connect((SERVER_IP, SERVER_PORT))
+        client.send(f"RECV|{code}".encode())
+
+        # Espera metadados: FILENM | NOME | TAMANHO
+        server_msg = client.recv(1024).decode()
+        
+        if server_msg.startswith("FILENM|"):
+            _, filename, filesize_str = server_msg.split("|")
+            filesize = int(filesize_str)
+            
+            output_name = f"baixado_{filename}"
+            print(f"Recebendo '{filename}' ({filesize} bytes)...")
+            
+            received_total = 0
+            with open(output_name, 'wb') as f:
+                while received_total < filesize:
+                    # Calcula quanto falta para não ler bytes extras de outra msg
+                    to_read = min(4096, filesize - received_total)
+                    data = client.recv(to_read)
+                    if not data: break
+                    f.write(data)
+                    received_total += len(data)
+            
+            print(f"Sucesso! Salvo como '{output_name}'")
+            
+        elif server_msg.startswith("ERROR:"):
+            print(f"Erro: {server_msg}")
+            
+    except Exception as e:
+        print(f"Erro: {e}")
+    finally:
+        client.close()
 
 def main():
-    print("1. Enviar Arquivo")
-    print("2. Receber Arquivo")
-    choice = input("Escolha: ")
-
-    if choice == '1':
-        send_file()
-    elif choice == '2':
-        receive_file()
+    print("=== MULTI-USER P2P ===")
+    print("1. Compartilhar Arquivo (Fica online)")
+    print("2. Baixar Arquivo")
+    choice = input("Opção: ")
+    if choice == '1': send_file()
+    elif choice == '2': receive_file()
 
 if __name__ == "__main__":
     main()
