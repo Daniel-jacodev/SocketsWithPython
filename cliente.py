@@ -1,103 +1,73 @@
 import socket
 import os
 import time
-import pathlib
+import tkinter as tk
+from tkinter import filedialog
 
-SERVER_IP = 'localhost'
+# CONFIGURAÇÃO
+SERVER_IP = 'localhost' 
 SERVER_PORT = 8080
 
-def limpar_caminho(caminho_bruto):
-    """
-    Remove aspas, espaços e caracteres especiais do PowerShell (&)
-    que atrapalham no Windows.
-    """
-    # 1. Remove espaços em branco nas pontas
-    caminho = caminho_bruto.strip()
+def selecionar_arquivo_janela():
+    """Abre uma janela nativa do SO para escolher o arquivo"""
+    print("Abrindo janela de seleção...")
     
-    # 2. Remove aspas simples e duplas (comum em ambos os sistemas)
-    caminho = caminho.replace("'", "").replace('"', "")
+    # Cria uma janela raiz invisível (necessário para o tkinter não abrir uma tela em branco)
+    root = tk.Tk()
+    root.withdraw() 
+    root.attributes('-topmost', True) # Força a janela a aparecer na frente
     
-    # 3. Correção específica para Windows PowerShell (Remove o '& ' do início)
-    if caminho.startswith("& "):
-        caminho = caminho[2:]
-    elif caminho.startswith("&"):
-        caminho = caminho[1:]
-        
-    # 4. Remove espaços extras que podem ter sobrado após tirar o '&'
-    caminho = caminho.strip()
-
-    # 5. Normaliza as barras (Converte / para \ no Windows automaticamente)
-    return os.path.normpath(caminho)
-
-import pathlib # Adicione isso lá em cima nos imports
+    # Abre o explorador de arquivos
+    filename = filedialog.askopenfilename(title="Selecione o arquivo para enviar")
+    
+    root.destroy() # Fecha o processo da janela
+    return filename
 
 def send_file():
-    print("\n--- MODO ENVIAR (Windows Safe) ---")
-    raw_input = input("Arraste o arquivo aqui: ")
+    print("\n--- MODO ENVIAR ---")
+    print("Dica: Uma janela abrirá para você selecionar o arquivo.")
     
-    # 1. Limpeza em camadas
-    path_str = raw_input.strip()
-    
-    # Remove artefatos do PowerShell
-    if path_str.startswith("&"):
-        path_str = path_str[1:].strip()
-        
-    # Remove aspas repetidamente (caso tenha '"caminho"')
-    path_str = path_str.replace('"', '').replace("'", "").strip()
-    
-    # 2. Converte para objeto Path (Resolve barras invertidas automaticamente)
-    path_obj = pathlib.Path(path_str)
-    
-    # 3. Resolve caminho absoluto (Transforma caminhos relativos em C:\...)
-    try:
-        full_path = path_obj.resolve()
-        filename = str(full_path)
-    except Exception as e:
-        filename = path_str # Se der erro, usa o original
+    # --- MUDANÇA AQUI: Usa a janela em vez do input ---
+    filename = selecionar_arquivo_janela()
+    # --------------------------------------------------
 
-    print(f"DEBUG: Tentando ler: [{filename}]")
-
-    if not os.path.exists(filename):
-        print("❌ Erro: O Windows não achou o arquivo.")
-        # Tenta listar o diretório para ver se é problema de permissão ou nome
-        try:
-            pasta_pai = os.path.dirname(filename)
-            if os.path.exists(pasta_pai):
-                print(f"✅ A pasta '{pasta_pai}' existe.")
-                print("Arquivos próximos:", os.listdir(pasta_pai)[:3]) # Mostra os 3 primeiros arquivos
-            else:
-                print(f"❌ A pasta '{pasta_pai}' também não foi encontrada.")
-        except:
-            pass
+    if not filename: # Se o usuário cancelar a janela
+        print("❌ Nenhum arquivo selecionado.")
         return
 
-    # Se passou daqui, é sucesso. Continua o código normal...
+    # Garante que o caminho está normalizado para o sistema atual
+    filename = os.path.normpath(filename)
+    print(f"DEBUG: Arquivo selecionado: [{filename}]")
+
+    if not os.path.exists(filename):
+        print("❌ Erro bizarro: O sistema selecionou mas não achou. Verifique permissões.")
+        return
+
+    # Resto do código segue normal...
     filesize = os.path.getsize(filename)
     name_only = os.path.basename(filename)
-    
+
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # ... (Copie o resto da conexão do código anterior aqui) ...
+    
     try:
         client.connect((SERVER_IP, SERVER_PORT))
+        
+        # Envia cabeçalho
         client.send(f"SEND|{name_only}|{filesize}".encode())
-        # ... resto igual ...
+
         response = client.recv(1024).decode()
         
         if response.startswith("CODE:"):
             code = response.split(":")[1]
-            print(f"\n✅ CÓDIGO ATIVO: {code}")
+            print(f"\n✅ CÓDIGO GERADO: {code}")
             print(f"Arquivo '{name_only}' ({filesize} bytes) pronto.")
-            print("O arquivo está disponível para múltiplos downloads.")
-            print("Pressione Ctrl+C para encerrar o compartilhamento.\n")
+            print("⏳ Modo Seed Ativo (Ctrl+C para sair)...")
             
-            # === LOOP DE SEMEADURA (SEEDING) ===
             while True:
-                print("Aguardando solicitações de download...")
-                
                 msg = client.recv(1024).decode()
                 
                 if msg == "UPLOAD_NOW":
-                    print(f"--> Iniciando envio para um cliente...")
+                    print(f"\n--> Receptor conectado! Enviando...")
                     with open(filename, 'rb') as f:
                         total_sent = 0
                         while total_sent < filesize:
@@ -105,25 +75,27 @@ def send_file():
                             if not data: break
                             client.send(data)
                             total_sent += len(data)
-                    print(f"--> Envio concluído! Voltando a aguardar.\n")
+                    print(f"--> Envio concluído!")
                 
                 elif msg == "": 
                     print("⚠️ Servidor desconectado.")
                     break
         else:
-            print(f"Erro do servidor: {response}")
+            print(f"❌ Erro do servidor: {response}")
 
-    except KeyboardInterrupt:
-        print("\nEncerrando compartilhamento...")
     except ConnectionRefusedError:
-        print("❌ Erro: Não foi possível conectar ao servidor.")
+        print("❌ Erro: Servidor offline.")
+    except KeyboardInterrupt:
+        print("\n👋 Encerrado.")
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"❌ Erro: {e}")
     finally:
         client.close()
 
 def receive_file():
-    code = input("Digite o código: ")
+    print("\n--- MODO RECEBER ---")
+    code = input("Digite o código de transferência: ").strip()
+    
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     try:
@@ -138,7 +110,7 @@ def receive_file():
             filesize = int(parts[2])
             
             output_name = f"baixado_{filename}"
-            print(f"\n📥 Recebendo '{filename}' ({filesize} bytes)...")
+            print(f"\n📥 Recebendo: {filename} ({filesize} bytes)")
             
             received_total = 0
             with open(output_name, 'wb') as f:
@@ -149,25 +121,28 @@ def receive_file():
                     f.write(data)
                     received_total += len(data)
             
-            print(f"✅ Sucesso! Salvo como '{output_name}'")
+            print(f"✅ Download concluído: {output_name}")
             
         elif server_msg.startswith("ERROR:"):
-            print(f"Erro: {server_msg}")
+            print(f"❌ Erro: {server_msg}")
             
     except ConnectionRefusedError:
-         print("❌ Erro: Não foi possível conectar ao servidor.")
+        print("❌ Erro: Não foi possível conectar ao servidor.")
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"❌ Erro: {e}")
     finally:
         client.close()
 
 def main():
-    print("=== MULTI-USER P2P (Windows/Linux Compatible) ===")
-    print("1. Compartilhar Arquivo (Fica online)")
-    print("2. Baixar Arquivo")
-    choice = input("Opção: ")
-    if choice == '1': send_file()
-    elif choice == '2': receive_file()
+    print("=== P2P FILE TRANSFER (GUI Selector) ===")
+    print("1. Enviar Arquivo")
+    print("2. Receber Arquivo")
+    choice = input("Escolha: ")
+
+    if choice == '1':
+        send_file()
+    elif choice == '2':
+        receive_file()
 
 if __name__ == "__main__":
     main()
