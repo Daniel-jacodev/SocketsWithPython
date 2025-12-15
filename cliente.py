@@ -1,49 +1,44 @@
 import socket
 import os
 import time
-import tkinter as tk
-from tkinter import filedialog
 
 # CONFIGURAÇÃO
 SERVER_IP = 'localhost' 
 SERVER_PORT = 8080
 
-def selecionar_arquivo_janela():
-    """Abre uma janela nativa do SO para escolher o arquivo"""
-    print("Abrindo janela de seleção...")
+def limpar_caminho_windows(caminho_bruto):
+    """Limpeza cirúrgica para caminhos do Windows"""
+    path = caminho_bruto.strip()
     
-    # Cria uma janela raiz invisível (necessário para o tkinter não abrir uma tela em branco)
-    root = tk.Tk()
-    root.withdraw() 
-    root.attributes('-topmost', True) # Força a janela a aparecer na frente
+    # Remove artefatos do PowerShell
+    if path.startswith("&"):
+        path = path[1:].strip()
     
-    # Abre o explorador de arquivos
-    filename = filedialog.askopenfilename(title="Selecione o arquivo para enviar")
+    # Remove aspas simples e duplas das pontas
+    path = path.strip('"').strip("'").strip()
     
-    root.destroy() # Fecha o processo da janela
-    return filename
+    return os.path.normpath(path)
 
 def send_file():
     print("\n--- MODO ENVIAR ---")
-    print("Dica: Uma janela abrirá para você selecionar o arquivo.")
+    print("DICA DO WINDOWS: Segure SHIFT + Botão Direito no arquivo e escolha 'Copiar como caminho'.")
+    print("Depois cole aqui.")
     
-    # --- MUDANÇA AQUI: Usa a janela em vez do input ---
-    filename = selecionar_arquivo_janela()
-    # --------------------------------------------------
-
-    if not filename: # Se o usuário cancelar a janela
-        print("❌ Nenhum arquivo selecionado.")
-        return
-
-    # Garante que o caminho está normalizado para o sistema atual
-    filename = os.path.normpath(filename)
-    print(f"DEBUG: Arquivo selecionado: [{filename}]")
-
+    raw_filename = input("Cole o caminho do arquivo: ")
+    
+    filename = limpar_caminho_windows(raw_filename)
+    
+    # --- ÁREA DE DEBUG (RAIO-X) ---
+    print(f"\n[DEBUG] O Python entendeu: [{filename}]")
     if not os.path.exists(filename):
-        print("❌ Erro bizarro: O sistema selecionou mas não achou. Verifique permissões.")
+        print("❌ Erro: O arquivo não foi encontrado.")
+        print("🔍 Raio-X da string (Códigos ASCII):")
+        # Isso mostra caracteres invisíveis que podem estar atrapalhando
+        print([ord(c) for c in filename])
+        print("------------------------------------------------")
         return
+    # ------------------------------
 
-    # Resto do código segue normal...
     filesize = os.path.getsize(filename)
     name_only = os.path.basename(filename)
 
@@ -51,8 +46,6 @@ def send_file():
     
     try:
         client.connect((SERVER_IP, SERVER_PORT))
-        
-        # Envia cabeçalho
         client.send(f"SEND|{name_only}|{filesize}".encode())
 
         response = client.recv(1024).decode()
@@ -65,9 +58,8 @@ def send_file():
             
             while True:
                 msg = client.recv(1024).decode()
-                
                 if msg == "UPLOAD_NOW":
-                    print(f"\n--> Receptor conectado! Enviando...")
+                    print(f"\n--> Enviando...")
                     with open(filename, 'rb') as f:
                         total_sent = 0
                         while total_sent < filesize:
@@ -75,10 +67,8 @@ def send_file():
                             if not data: break
                             client.send(data)
                             total_sent += len(data)
-                    print(f"--> Envio concluído!")
-                
+                    print(f"--> Concluído!")
                 elif msg == "": 
-                    print("⚠️ Servidor desconectado.")
                     break
         else:
             print(f"❌ Erro do servidor: {response}")
@@ -94,10 +84,9 @@ def send_file():
 
 def receive_file():
     print("\n--- MODO RECEBER ---")
-    code = input("Digite o código de transferência: ").strip()
+    code = input("Digite o código: ").strip()
     
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
     try:
         client.connect((SERVER_IP, SERVER_PORT))
         client.send(f"RECV|{code}".encode())
@@ -120,29 +109,22 @@ def receive_file():
                     if not data: break
                     f.write(data)
                     received_total += len(data)
-            
             print(f"✅ Download concluído: {output_name}")
             
         elif server_msg.startswith("ERROR:"):
             print(f"❌ Erro: {server_msg}")
-            
-    except ConnectionRefusedError:
-        print("❌ Erro: Não foi possível conectar ao servidor.")
     except Exception as e:
         print(f"❌ Erro: {e}")
     finally:
         client.close()
 
 def main():
-    print("=== P2P FILE TRANSFER (GUI Selector) ===")
+    print("=== P2P FILE TRANSFER (Texto Puro) ===")
     print("1. Enviar Arquivo")
     print("2. Receber Arquivo")
     choice = input("Escolha: ")
-
-    if choice == '1':
-        send_file()
-    elif choice == '2':
-        receive_file()
+    if choice == '1': send_file()
+    elif choice == '2': receive_file()
 
 if __name__ == "__main__":
     main()
