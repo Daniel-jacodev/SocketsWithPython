@@ -7,9 +7,18 @@ SERVER_IP = 'localhost'
 SERVER_PORT = 8080
 
 def send_file():
-    filename = input("Digite o caminho do arquivo para enviar: ")
+    # Recebe o caminho bruto
+    raw_filename = input("Digite o caminho do arquivo para enviar: ")
+    
+    # 1. .strip() remove espaços vazios no começo e fim
+    # 2. .replace() remove aspas simples (') e duplas (") que o terminal adiciona
+    filename = raw_filename.strip().replace("'", "").replace('"', "")
+    
+    # Dica: Vamos imprimir para ver como ficou o caminho limpo
+    print(f"Procurando por: {filename}") 
+
     if not os.path.exists(filename):
-        print("Arquivo não encontrado.")
+        print("Erro: Arquivo não encontrado. Verifique o caminho.")
         return
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -26,20 +35,18 @@ def send_file():
         print(f"\n--- CÓDIGO DE TRANSFERÊNCIA: {code} ---")
         print("Aguardando receptor conectar...")
         
-        # Espera o servidor dizer "START" (quando o receptor conectar)
+        # Espera o servidor dizer "START"
         msg = client.recv(1024).decode()
         if msg == "START":
             print("Receptor conectado! Enviando arquivo...")
             with open(filename, 'rb') as f:
                 while True:
-                    # Lê o arquivo em pedaços de 4KB (Chunking)
                     data = f.read(4096)
                     if not data:
                         break
                     client.send(data)
             print("Arquivo enviado com sucesso!")
             client.close()
-
 def receive_file():
     code = input("Digite o código de transferência: ")
     
