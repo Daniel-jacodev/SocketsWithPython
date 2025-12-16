@@ -107,6 +107,7 @@ def receive_file():
         client.connect((SERVER_IP, SERVER_PORT))
         client.send(f"RECV|{code}".encode())
 
+        # Recebe os metadados (agora vem limpo, sem pedaço de foto junto)
         server_msg = client.recv(1024).decode()
         
         if server_msg.startswith("FILENM|"):
@@ -115,10 +116,16 @@ def receive_file():
             filesize = int(parts[2])
             
             output_name = f"baixado_{filename}"
-            print(f"\n📥 Baixando: {filename} ({filesize} bytes)")
+            print(f"\n📥 Recebendo: {filename} ({filesize} bytes)")
+
+            # === [CORREÇÃO AQUI] ===
+            # Avisa o servidor: "Já li o nome do arquivo. Pode mandar os dados!"
+            client.send("OK".encode())
+            # =======================
             
             received_total = 0
             with open(output_name, 'wb') as f:
+            # ... (resto do código continua igual)
                 while received_total < filesize:
                     to_read = min(4096, filesize - received_total)
                     data = client.recv(to_read)

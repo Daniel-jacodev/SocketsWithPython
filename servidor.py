@@ -43,6 +43,9 @@ def handle_client(client_socket, address):
             return 
 
         # === LÓGICA DO RECEPTOR (RECEIVER) ===
+   # No server.py, dentro de handle_client, procure o bloco 'elif command == 'RECV':'
+
+        # === LÓGICA DO RECEPTOR (RECEIVER) ===
         elif command == 'RECV':
             code = request[1]
             
@@ -54,10 +57,17 @@ def handle_client(client_socket, address):
                 
                 print(f"Cliente {address} solicitou arquivo {code}")
 
-             
+                # 1. Envia os dados do arquivo (Texto)
                 client_socket.send(f"FILENM|{filename}|{filesize}".encode())
 
-                # 2. Cutuca o Sender para começar a enviar DE NOVO
+                # === [CORREÇÃO AQUI] ===
+                # TRAVA DE SEGURANÇA: O servidor fica PARADO aqui esperando
+                # o receptor dizer "OK, recebi o nome, pode mandar a foto".
+                # Isso impede que a foto chegue grudada no nome.
+                client_socket.recv(1024) 
+                # =======================
+
+                # 2. Cutuca o Sender para começar a enviar
                 try:
                     sender_socket.send("UPLOAD_NOW".encode())
                 except:
@@ -65,9 +75,10 @@ def handle_client(client_socket, address):
                     del transfers[code]
                     return
 
-              
+                # 3. Relay Loop (Repassa os dados)
                 remaining = filesize
                 while remaining > 0:
+                # ... (resto do código continua igual)  
                 
                     read_size = min(BLOCK_SIZE, remaining)
                     
