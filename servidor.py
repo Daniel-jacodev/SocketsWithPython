@@ -3,8 +3,7 @@ import threading
 import random
 import string
 
-# Configuração
-MAX_FILE_SIZE = 500 * 1024 * 1024  # Limite de 500MB por transferência
+MAX_FILE_SIZE = 500 * 1024 * 1024  
 BLOCK_SIZE = 4096
 
 transfers = {}
@@ -21,9 +20,9 @@ def handle_client(client_socket, address):
         # === LÓGICA DO ENVIADOR (SENDER) ===
         if command == 'SEND':
             filename = request[1]
-            filesize = int(request[2]) # Agora recebemos o tamanho!
+            filesize = int(request[2]) 
             
-            # Requisito: Limitar espaço
+            
             if filesize > MAX_FILE_SIZE:
                 client_socket.send("ERROR:Arquivo muito grande".encode())
                 client_socket.close()
@@ -40,9 +39,7 @@ def handle_client(client_socket, address):
             client_socket.send(f"CODE:{code}".encode())
             print(f"Sessão criada! Código: {code} | Arq: {filename} ({filesize} bytes)")
             print(f"Enviador {address} está aguardando downloads...")
-            
-            # O servidor não faz mais nada aqui. 
-            # O socket fica aberto no dicionário 'transfers' esperando ser chamado.
+          
             return 
 
         # === LÓGICA DO RECEPTOR (RECEIVER) ===
@@ -57,7 +54,7 @@ def handle_client(client_socket, address):
                 
                 print(f"Cliente {address} solicitou arquivo {code}")
 
-                # 1. Envia Metadados para o Receptor
+             
                 client_socket.send(f"FILENM|{filename}|{filesize}".encode())
 
                 # 2. Cutuca o Sender para começar a enviar DE NOVO
@@ -68,21 +65,21 @@ def handle_client(client_socket, address):
                     del transfers[code]
                     return
 
-                # 3. A Ponte Controlada (Loop exato pelo tamanho do arquivo)
+              
                 remaining = filesize
                 while remaining > 0:
-                    # Lê o que falta ou o bloco máximo de 4096
+                
                     read_size = min(BLOCK_SIZE, remaining)
                     
                     data = sender_socket.recv(read_size)
-                    if not data: break # Sender caiu no meio
+                    if not data: break
                     
                     client_socket.send(data)
                     remaining -= len(data)
                 
                 print(f"Transferência concluída para {address}. Enviador continua online.")
                 client_socket.close() 
-                # Nota: Só fechamos o receptor. O Sender continua vivo!
+               
                 
             else:
                 client_socket.send("ERROR:Código inválido ou expirado".encode())
@@ -90,7 +87,7 @@ def handle_client(client_socket, address):
 
     except Exception as e:
         print(f"Erro: {e}")
-        # Se der erro, tenta fechar o socket
+     
         client_socket.close()
 
 def start_server():
