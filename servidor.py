@@ -1,6 +1,6 @@
-import socket
-import threading
-import random
+import socket #Para utilizar sockets
+import threading #Para permitir multiplas conexões através do socket
+import random #Para gerar o código random
 import string
 
 MAX_FILE_SIZE = 500 * 1024 * 1024  
@@ -21,6 +21,7 @@ def handle_client(client_socket, address):
         if command == 'SEND':
             filename = request[1]
             filesize = int(request[2]) 
+            file_hash = request[3]
             
             
             if filesize > MAX_FILE_SIZE:
@@ -33,8 +34,9 @@ def handle_client(client_socket, address):
             transfers[code] = {
                 'socket': client_socket,
                 'filename': filename,
-                'filesize': filesize
-            }
+                'filesize': filesize,
+                'hash': file_hash
+            }   
             
             client_socket.send(f"CODE:{code}".encode())
             print(f"Sessão criada! Código: {code} | Arq: {filename} ({filesize} bytes)")
@@ -42,8 +44,6 @@ def handle_client(client_socket, address):
           
             return 
 
-        # === LÓGICA DO RECEPTOR (RECEIVER) ===
-   # No server.py, dentro de handle_client, procure o bloco 'elif command == 'RECV':'
 
         # === LÓGICA DO RECEPTOR (RECEIVER) ===
         elif command == 'RECV':
@@ -57,7 +57,7 @@ def handle_client(client_socket, address):
                 
                 print(f"Cliente {address} solicitou arquivo {code}")
 
-                client_socket.send(f"FILENM|{filename}|{filesize}".encode())
+                client_socket.send(f"FILENM|{filename}|{filesize}|{sender_data['hash']}".encode())
 
  
                 # TRAVA DE SEGURANÇA: O servidor fica PARADO aqui esperando

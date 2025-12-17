@@ -1,10 +1,20 @@
-import socket
-import os
-import platform
+import socket #Para utilizar sockets
+import os #Para identificar o SO utilizado e tratar de forma diferenes
+import platform 
+import hashlib #Para utilizar o calculo de hash e verificar a integridade do arquivo
 
 # CONFIGURAÇÃO
 SERVER_IP = 'localhost'
 SERVER_PORT = 8080
+
+def calcular_hash(caminho):
+    sha256 = hashlib.sha256()
+    with open(caminho, "rb") as f:
+        while chunk := f.read(4096):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+
 
 def corrigir_caminho(caminho_original):
    
@@ -35,6 +45,7 @@ def send_file():
     raw_input = input("Caminho: ")
     
     filename = corrigir_caminho(raw_input)
+    file_hash = calcular_hash(filename)
 
     if not filename:
         print("\n❌ ERRO FATAL: Arquivo não encontrado nem no local original, nem no OneDrive.")
@@ -48,7 +59,7 @@ def send_file():
     
     try:
         client.connect((SERVER_IP, SERVER_PORT))
-        client.send(f"SEND|{name_only}|{filesize}".encode())
+        client.send(f"SEND|{name_only}|{filesize}|{file_hash}".encode())
 
         response = client.recv(1024).decode()
         
@@ -97,6 +108,8 @@ def receive_file():
             parts = server_msg.split("|")
             filename = parts[1]
             filesize = int(parts[2])
+            hash_recebido = parts[3]
+            
             
             output_name = f"baixado_{filename}"
             print(f"\n📥 Recebendo: {filename} ({filesize} bytes)")
@@ -114,6 +127,14 @@ def receive_file():
                     f.write(data)
                     received_total += len(data)
             print(f"✅ Salvo como: {output_name}")
+            
+            hash_calculado = calcular_hash(output_name)
+
+            if hash_calculado == hash_recebido:
+                 print("✅ Integridade confirmada! O arquivo está perfeito.")
+            else:
+                print("❌ ERRO: O arquivo pode estar corrompido ou foi alterado.")
+            
             
         elif server_msg.startswith("ERROR:"):
             print(f"Erro: {server_msg}")
