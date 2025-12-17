@@ -16,13 +16,7 @@ def corrigir_caminho(caminho_original):
     if os.path.exists(caminho):
         return caminho
 
-    print(f"❌ Caminho padrão falhou: {caminho}")
-    print("🔍 Tentando procurar dentro do OneDrive...")
-
-
     pastas_comuns = ["Desktop", "Documents", "Pictures", "Imagens", "Documentos", "Área de Trabalho"]
-    
-   # path_parts = caminho.split(os.sep)
     
     for pasta in pastas_comuns:
         if pasta in caminho:
@@ -30,7 +24,7 @@ def corrigir_caminho(caminho_original):
             caminho_onedrive = caminho.replace(pasta, f"OneDrive{os.sep}{pasta}")
             
             if os.path.exists(caminho_onedrive):
-                print(f"✅ ACHEI! O arquivo real está em: {caminho_onedrive}")
+                print(f"✅ ACHEI! O arquivo está em: {caminho_onedrive}")
                 return caminho_onedrive
 
     return None
