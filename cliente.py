@@ -6,7 +6,7 @@ import hashlib
 
 
 NGROK_HOST = '0.tcp.sa.ngrok.io'
-NGROK_PORT = 19890             
+NGROK_PORT = 19034       
 
 
 SERVER_IP = ""     
@@ -87,7 +87,7 @@ def send_file():
                             # Opcional: Mostrar progresso
                             # print(f"Enviado: {total_sent}/{filesize}", end='\r')
                     print(f"\n--> Sucesso! Transferência concluída.")
-                    break
+                    print("Conexão aberta, para mais transferências, caso deseje fechar, aperte Ctrl + C")
                 elif msg == "": 
                     print("Conexão perdida.")
                     break
