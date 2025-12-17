@@ -96,10 +96,9 @@ def handle_client(client_socket, address):
                 
                 print(f"✅ Transferência concluída! Código {code} finalizado.")
                 
-                # Limpeza
-                del transfers[code]
+                
                 client_socket.close()       # Fecha receptor
-                sender_socket.close()       # Fecha enviador
+               
                 
             else:
                 client_socket.send("ERROR:Código inválido ou expirado".encode())
