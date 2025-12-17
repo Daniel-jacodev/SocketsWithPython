@@ -46,11 +46,10 @@ def send_file():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     try:
-        # Usa o IP que descobrimos no início
+  
         print(f"📡 Conectando em {SERVER_IP}:{SERVER_PORT}...")
         client.connect((SERVER_IP, SERVER_PORT))
-        
-        # Protocolo de envio
+
         client.send(f"SEND|{name_only}|{filesize}|{file_hash}".encode())
 
         response = client.recv(1024).decode()
