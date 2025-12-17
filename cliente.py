@@ -22,22 +22,22 @@ def calcular_hash(caminho):
 def corrigir_caminho(caminho_original):
     caminho = caminho_original.strip().strip('"').strip("'")
     
-    if platform.system() == "Windows" and caminho.startswith("&"):
-        caminho = caminho[1:].strip()
+    # if platform.system() == "Windows" and caminho.startswith("&"):
+    #     caminho = caminho[1:].strip()
 
     if os.path.exists(caminho):
         return caminho
 
-    pastas_comuns = ["Desktop", "Documents", "Pictures", "Imagens", "Documentos", "Área de Trabalho"]
+    # pastas_comuns = ["Desktop", "Documents", "Pictures", "Imagens", "Documentos", "Área de Trabalho"]
     
-    for pasta in pastas_comuns:
-        if pasta in caminho:
-            caminho_onedrive = caminho.replace(pasta, f"OneDrive{os.sep}{pasta}")
-            if os.path.exists(caminho_onedrive):
-                print(f"✅ ACHEI! O arquivo está em: {caminho_onedrive}")
-                return caminho_onedrive
+    # for pasta in pastas_comuns:
+    #     if pasta in caminho:
+    #         caminho_onedrive = caminho.replace(pasta, f"OneDrive{os.sep}{pasta}")
+    #         if os.path.exists(caminho_onedrive):
+    #             print(f"✅ ACHEI! O arquivo está em: {caminho_onedrive}")
+    #             return caminho_onedrive
 
-    return None
+    # return None
 
 def send_file():
     print("\n--- MODO ENVIAR ---")
