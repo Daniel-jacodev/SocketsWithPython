@@ -6,9 +6,8 @@ import string
 # Configurações
 MAX_FILE_SIZE = 500 * 1024 * 1024  
 BLOCK_SIZE = 4096
-# IMPORTANTE: A porta aqui tem de bater com a porta que vais abrir no Ngrok
-# Se usares 'ngrok tcp 65432', muda aqui para 65432.
-PORTA_SERVIDOR = 65432 
+
+PORTA_SERVIDOR = 8080
 
 transfers = {}
 

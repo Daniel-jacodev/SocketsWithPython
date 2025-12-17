@@ -3,12 +3,12 @@ import os
 import platform 
 import hashlib 
 
-# --- CONFIGURAÇÃO DO NGROK ---
-# ATENÇÃO: Toda vez que reiniciar o Ngrok no servidor, atualize estes dados!
-NGROK_HOST = '0.tcp.sa.ngrok.io'  # Copie do Ngrok (sem tcp://)
-NGROK_PORT = 12345                # Copie a porta numérica do Ngrok
 
-# Variáveis que serão definidas automaticamente
+
+NGROK_HOST = '0.tcp.sa.ngrok.io'
+NGROK_PORT = 19890             
+
+
 SERVER_IP = ""     
 SERVER_PORT = NGROK_PORT
 
