@@ -1,74 +1,130 @@
-# SocketsWithPython
+📂 Python P2P File Transfer (Socket TCP)
 
-# 📂 Sistema de Transferência de Arquivos P2P
+Um sistema de transferência de arquivos via rede baseado em arquitetura Cliente-Servidor (Relay). O projeto permite enviar e receber arquivos de qualquer tamanho, com verificação de integridade (Hash SHA256) e suporte a conexões via Internet (usando Ngrok) ou Rede Local.
+🚀 Funcionalidades
 
-Este é um projeto de transferência de arquivos desenvolvido em **Python** utilizando **Sockets**. O sistema funciona através de um servidor intermediário que conecta dois clientes (um Enviador e um Receptor) através de um **código curto**, eliminando a necessidade de digitar endereços IP manualmente.
+    Transferência via TCP: Garante a integridade e ordem dos dados.
 
-O sistema suporta **Multi-Threading** e **Sessões Persistentes** (Seeding), permitindo que um usuário envie o mesmo arquivo para várias pessoas sem precisar reiniciar o programa.
+    Arquitetura Relay: O servidor atua como intermediário, permitindo conexão entre clientes mesmo atrás de NATs restritivos.
 
-## 🚀 Funcionalidades
+    Hash SHA256: Verifica se o arquivo recebido é idêntico ao original bit a bit.
 
-- **Conexão via Código:** O enviador recebe um código único (ex: `XKY9`) e o receptor usa esse código para baixar.
-- **Modo "Seed" (Semente):** O enviador permanece online após o envio, permitindo múltiplos downloads simultâneos ou sequenciais.
-- **Transferência de Metadados:** O nome original e o tamanho do arquivo são enviados automaticamente.
-- **Barra de Progresso (Backend):** O sistema calcula bytes transferidos baseados no tamanho total.
-- **Suporte a qualquer arquivo:** Imagens, vídeos, PDFs, executáveis, etc.
-- **Tratamento de Erros:** Verificação de arquivos inexistentes, pastas e desconexões abruptas.
+    Chunks de 4KB: Transferência eficiente de memória (não carrega o arquivo todo na RAM).
 
-## 🛠️ Pré-requisitos
+    Multi-thread (Cliente): Interface não bloqueante, permitindo cancelar a conexão a qualquer momento.
 
-- Python 3.x instalado.
-- Conexão de rede (Localhost para testes ou LAN/Internet).
+🛠️ Pré-requisitos
 
-## 📦 Instalação
+    Python 3.x instalado.
 
-1. Clone o repositório:
-   ```bash
-   git clone [https://github.com/Daniel-jacodev/SocketsWithPython.git](https://github.com/Daniel-jacodev/SocketsWithPython.git)
-   cd SocketsWithPython
-   ```
-2. Certifique-se de ter os arquivos principais na pasta:
+    (Opcional) Ngrok: Para transferências via internet.
 
-   server.py
+        Criar conta e baixar Ngrok
 
-   client.py
+⚙️ Configuração e Execução
 
-⚙️ Configurações
+Você pode rodar este projeto de duas formas: Via Internet (pessoas em casas diferentes) ou Rede Local (mesmo Wi-Fi).
+MODO 1: Via Internet (Com Ngrok) 🌍
 
-Antes de rodar o projeto, você precisa configurar o IP do servidor no código do cliente.
+Ideal para transferir arquivos para amigos em qualquer lugar do mundo.
 
-    Abra o arquivo client.py em um editor de texto ou IDE.
+1. Configurar o Ngrok (Servidor)
 
-    Localize a variável SERVER_IP logo no início do código.
+Abra o terminal onde está o Ngrok e inicie um túnel TCP na porta do seu servidor (padrão 19034):
+Bash
 
-Cenário A: Teste Local (No mesmo computador) Se você vai rodar o servidor e os clientes na mesma máquina:
-SERVER_IP = 'localhost'
+ngrok tcp 19034
 
-Cenário B: Rede Local (Entre computadores diferentes no mesmo Wi-Fi)
+O Ngrok vai gerar um endereço, exemplo: tcp://0.tcp.sa.ngrok.io:12345. 2. Configurar o Cliente (client.py)
 
-    Descubra o IPv4 do computador onde o server.py vai rodar (comando ipconfig no Windows ou ip a no Linux).
+No arquivo do cliente, atualize as variáveis com os dados que o Ngrok forneceu:
+Python
 
-    Coloque esse IP no arquivo client.py de todos os computadores:
+# Exemplo baseado na saída do Ngrok
 
-SERVER_IP = '192.168.1.15' # Exemplo, coloque o seu IP real
+NGROK_HOST = '0.tcp.sa.ngrok.io' # O endereço sem o 'tcp://' e sem a porta
+NGROK_PORT = 12345 # O número da porta gerado pelo Ngrok
 
-🎮 Como Usar
+3. Rodar
 
-Abra 3 terminais (ou abas) para simular o sistema completo.
+   Execute o servidor: python server.py
 
-1. Iniciar o Servidor
+   Execute o cliente (Remetente): python client.py
 
-O servidor deve ser sempre o primeiro a ser iniciado.
-python3 servidor.py
+   Execute o cliente (Destinatário): python client.py
 
-2. Enviar Arquivo (Sender)
+MODO 2: Rede Local (Sem Ngrok/LAN) 🏠
 
-Em um segundo terminal:
-python3 cliente.py
-E escolha a opção 1, logo após arraste o arquivo que irá enviar até o terminal e aperte enter
+Ideal para transferir arquivos entre computadores no mesmo Wi-Fi ou rede cabeada. Não precisa de internet.
 
-3. Receber Arquivo (Receiver)
+1. Descobrir o IP do Servidor
 
-Em um terceiro terminal:
-python3 cliente.py
-Escolha a opção 2, e insira o código gerado no segundo terminal
+No computador que vai rodar o servidor, abra o terminal e digite:
+
+    Windows: ipconfig (Procure por Endereço IPv4, ex: 192.168.0.15)
+
+    Linux/Mac: ifconfig ou ip a
+
+2. Configurar o Cliente (client.py)
+
+No arquivo do cliente, aponte diretamente para o IP local do servidor e a porta padrão definida no servidor:
+Python
+
+# Coloque o IP do computador que está rodando o servidor
+
+NGROK_HOST = '192.168.0.15'  
+NGROK_PORT = 19034 # A porta original definida no server.py
+
+3. Rodar
+
+   Execute o servidor.
+
+   Execute os clientes nas outras máquinas da rede.
+
+📖 Como Usar
+
+1.  Enviando um Arquivo
+
+    Inicie o client.py e escolha a Opção 1.
+
+    Cole o caminho do arquivo (pode arrastar o arquivo para o terminal).
+
+    O programa gerará um CÓDIGO (ex: 1234).
+
+    Envie esse código para quem vai receber.
+
+    Aguarde a conexão. Se precisar cancelar, aperte ENTER.
+
+2.  Recebendo um Arquivo
+
+    Inicie o client.py e escolha a Opção 2.
+
+    Digite o CÓDIGO fornecido pelo remetente.
+
+    O download iniciará automaticamente.
+
+    Ao final, o programa valida o Hash SHA256.
+
+        ✅ SUCESSO: O arquivo é perfeito.
+
+        ❌ PERIGO: O arquivo foi corrompido.
+
+🧠 Como Funciona (Técnico)
+
+O sistema utiliza sockets puros do Python. O fluxo de dados acontece da seguinte forma:
+
+    Handshake: O remetente envia metadados (Nome, Tamanho, Hash) para o servidor.
+
+    Matchmaking: O servidor gera um código único e aguarda um receptor com esse código.
+
+    Tunneling: O servidor conecta as duas pontas.
+
+    Streaming:
+
+        O remetente lê 4KB do disco e envia para o servidor.
+
+        O servidor recebe (buffer em RAM) e imediatamente repassa para o receptor.
+
+        O receptor escreve 4KB no disco.
+
+        Nota: O arquivo não fica salvo no servidor, apenas passa pela memória volátil.
