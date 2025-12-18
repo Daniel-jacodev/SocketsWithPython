@@ -11,7 +11,6 @@ Um sistema de transferência de arquivos via rede baseado em arquitetura Cliente
 
     Chunks de 4KB: Transferência eficiente de memória (não carrega o arquivo todo na RAM).
 
-    Multi-thread (Cliente): Interface não bloqueante, permitindo cancelar a conexão a qualquer momento.
 
 🛠️ Pré-requisitos
 
